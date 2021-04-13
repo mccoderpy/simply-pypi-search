@@ -1,7 +1,8 @@
-import multidict
 from bs4 import BeautifulSoup
 from aiohttp import ClientSession
 
+usr_agent = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
+                           'Chrome/61.0.3163.100 Safari/537.36'}
 
 class Search:
     def __init__(self):
@@ -32,7 +33,7 @@ class Search:
             if description is not None:
                 description = description.decode_contents()
             if name:
-                yield {"name": name, "description": description, "version": version, "release-time": release, "link": "https://pypi.org"+link['href']}
+                yield SearchResult({"name": name, "description": description, "version": version, "released": release, "link": "https://pypi.org"+link['href']})
 
     @classmethod
     async def pypi_search(cls, keyword: str) -> list:
@@ -44,4 +45,14 @@ class Search:
         :return: list[dict{name, description, version, release-time, link}]
         """
         html = await cls().pypi_get_results(keyword)
+
         return list(cls().parse_pypi_results(html))
+
+
+class SearchResult:
+    def __init__(self, data: dict):
+        self.name: str = data.get('name')
+        self.description: str = data.get('description')
+        self.version: str = data.get('version')
+        self.released: str = data.get('released')
+        self.link: str = data.get('link')
