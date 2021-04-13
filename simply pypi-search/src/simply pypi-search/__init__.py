@@ -4,10 +4,20 @@ from aiohttp import ClientSession
 usr_agent = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
                            'Chrome/61.0.3163.100 Safari/537.36'}
 
-class Search:
+class PyPiSearch:
     def __init__(self):
-        __all__ =  {"pypi_search"}
+        self.search = self.pypi_search
+    @classmethod
+    async def pypi_search(cls, keyword: str)->list:
+        """
+        Returns an :class:`list` with :class:`PyPiProject` 's of the search
 
+        :param keyword:
+        :return: [result1, result2, result3, etc.]
+        """
+        html = await cls().pypi_get_results(keyword)
+        return list(cls().parse_pypi_results(html))
+    
     async def pypi_get_results(self, keyword):
         search_term = keyword.replace(" ", "+")
         async with ClientSession(headers=usr_agent) as suche:
@@ -21,38 +31,49 @@ class Search:
         ul = soup.find('ul', attrs='unstyled')
         result_block = ul.find_all('li')
         for result in result_block:
-            link = result.find('a', href=True)
+            link = result.find('a', href=True)['href']
             name = result.find('span', attrs={'class': 'package-snippet__name'})
             version = result.find('span', attrs={'class': 'package-snippet__version'})
             description = result.find('p', attrs={'class': 'package-snippet__description'})
-            release = result.find('time').decode_contents()
+            release = result.find('time').decode_scontents().strip("\n \n")
             if name is not None:
                 name = name.decode_contents()
             if version is not None:
                 version = version.decode_contents()
             if description is not None:
                 description = description.decode_contents()
-            if name:
-                yield SearchResult({"name": name, "description": description, "version": version, "released": release, "link": "https://pypi.org"+link['href']})
-
-    @classmethod
-    async def pypi_search(cls, keyword: str) -> list:
-        """
-        Returns an list of dicts with results of the search
-
-        :class: Search
-        :param keyword:
-        :return: list[dict{name, description, version, release-time, link}]
-        """
-        html = await cls().pypi_get_results(keyword)
-
-        return list(cls().parse_pypi_results(html))
+            if name and link:
+                yield PyPiProject({"name": name, "description": description, "version": version, "released": release, "link": "https://pypi.org"+link})
 
 
-class SearchResult:
+
+
+class PyPiProject:
+    """
+    The Objekt that a :func:`~PyPiSearch.pypi_search` returns
+
+    :class: PyPiProject
+
+    """
     def __init__(self, data: dict):
-        self.name: str = data.get('name')
-        self.description: str = data.get('description')
-        self.version: str = data.get('version')
-        self.released: str = data.get('released')
-        self.link: str = data.get('link')
+        self.Name =  data.get('name')
+        self.Description: str = data.get('description')
+        self.Version: str = data.get('version')
+        self.Released: str = data.get('released')
+        self.Link: str = data.get('link')
+
+    @property
+    def name(self):
+        return self.Name
+    @property
+    def description(self):
+        return self.Description
+    @property
+    def version(self):
+        return self.Version
+    @property
+    def released(self):
+        return self.Released
+    @property
+    def link(self):
+        return self.Link
